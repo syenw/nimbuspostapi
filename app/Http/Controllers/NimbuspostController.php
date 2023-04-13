@@ -8,6 +8,24 @@ use Illuminate\Support\Facades\DB;
 
 class NimbuspostController extends Controller
 {
+    private static function print_r($data)
+    {
+        echo "<pre>";
+        print_r($data);
+        echo "</pre>";
+        die;
+    }
+
+    private static function decode_format($data)
+    {
+        return json_decode($data, TRUE);
+    }
+
+    public function create_request_pickup()
+    {
+        
+    }
+
     public function check_courier(Request $request)
     {
         // 
@@ -34,8 +52,7 @@ class NimbuspostController extends Controller
 
         // $post_array2 = json_encode($post_array);
 
-        // print_r($post_array2);
-        // die;
+        // self::print_r($post_array2);
 
         // 
         $data_array = [
@@ -76,9 +93,7 @@ class NimbuspostController extends Controller
                     foreach ($res2 as $value) {
                         // 
                         foreach ($decode_format['data']['pricing'] as $value2) {
-                            // echo "<pre>";
-                            // print_r($value2);
-                            // echo "</pre>";
+                            self::print_r($value2);
                             
                             // 
                             if ($value->code == $value2['courier_code']) {
@@ -167,9 +182,7 @@ class NimbuspostController extends Controller
                         // Required
                         'name' => $value4->nama,
                         'qty' => $value3->qty,
-                        'price' => $value4->harga,
-                        
-                        // Optional
+                        'price' => $value4->harga
                     ];
                 }
             }
@@ -191,18 +204,15 @@ class NimbuspostController extends Controller
             ],
             'pickup_warehouse_id' => env('WAREHOUSE_ID'),
             'rto_warehouse_id' => env('WAREHOUSE_ID'),
-            'order_items' => $items
+            'order_items' => isset($items) ? $items : null
         ];
-
-        // print_r($post_array);
-
+        
         // 
         $res = self::nimbuspost_curl('https://id.nimbuspost.com/api/shipments/create', $post_array, true, 'post');
-
+        
         // 
         $decode_format = self::decode_format($res);
-
-        // 
+        
         if (isset($decode_format['data'])) {
             // 
             if (isset($decode_format['data']['status'])) {
@@ -210,7 +220,8 @@ class NimbuspostController extends Controller
                 if ($decode_format['data']['status'] == true) {
                     // 
                     $orders_array = [
-                        'resi_number' => $decode_format['data']['awb_number']
+                        'resi_number' => $decode_format['data']['awb_number'],
+                        'tracking_id' => $decode_format['data']['shipment_id'],
                     ];
 
                     // 
@@ -228,9 +239,15 @@ class NimbuspostController extends Controller
                             'message' => 'Successfully create new shipment.'
                         ];
                     }
+                    else {
+                        $data_array = [
+                            'status_code' => 509,
+                            'message' => 'Can\'t create new shipment. Please try again!'
+                        ];
+                    }
                 }
                 else {
-
+                    
                 }
             }
         }
@@ -238,7 +255,7 @@ class NimbuspostController extends Controller
         // 
         return response()->json($data_array);
     }
-
+    
     private static function nimbuspost_curl($url, $data, $curl_post, $type)
     {
         $ch = curl_init();
@@ -268,10 +285,5 @@ class NimbuspostController extends Controller
         } else {
             return $response;
         }
-    }
-
-    private static function decode_format($data)
-    {
-        return json_decode($data, TRUE);
     }
 }
