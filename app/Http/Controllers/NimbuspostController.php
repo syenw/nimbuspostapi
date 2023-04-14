@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\DB;
 
 class NimbuspostController extends Controller
 {
+    private $active = true;
+
     private static function print_r($data)
     {
         echo "<pre>";
@@ -88,7 +90,7 @@ class NimbuspostController extends Controller
                     foreach ($res2 as $value) {
                         // 
                         foreach ($decode_format['data']['pricing'] as $value2) {
-                            self::print_r($value2);
+                            // self::print_r($value2);
                             
                             // 
                             if ($value->code == $value2['courier_code']) {
@@ -133,7 +135,62 @@ class NimbuspostController extends Controller
 
     public function tracking_history(Request $request)
     {
+        $request_input = $request->only('invoice_number');
+
+        // self::print_r($order_res[0]->invoice_number);
+
+        $res = self::nimbuspost_curl('https://id.nimbuspost.com/api/shipments/track_awb/'.$request_input['invoice_number'], '', false, 'get');
         
+        // self::print_r($res);
+
+        $decode_format = self::decode_format($res);
+
+        if ($this->active == false) {
+            if (isset($decode_format['data'])) {
+                // 
+                if (isset($decode_format['data']['status'])) {
+                    // 
+                    if ($decode_format['data']['status'] == true) {
+                        foreach ($decode_format['data']['history'] as $value) {
+                            $data_array[] = [
+                                'date' => date('d-M-Y H:i:s', $value['event_time']),
+                                'description' => [
+                                    'status_code' => $value['status_code'],
+                                    'message' => $value['message'],
+                                    'location' => $value['location']
+                                ]
+                            ];
+                        }
+                    }
+                    else {
+
+                    }
+                }
+            }
+        }
+        else {
+            // 
+            $data_array_example = self::example_result_tracking();
+
+            // 
+            if (isset($decode_format['data'])) {
+                // 
+                if (isset($decode_format['data']['status'])) {
+                    // 
+                    if ($decode_format['data']['status'] == true) {
+                        foreach ($data_array_example['data']['history'] as $value) {
+                            $data_array[] = [
+                                'date' => date('d-M-Y H:i:s', $value['event_time']),
+                                'description' => $value['message'],
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+
+        // 
+        return response()->json($data_array);
     }
 
     public function create_new_shipment(Request $request)
@@ -295,11 +352,14 @@ class NimbuspostController extends Controller
         return response()->json($data_array); 
     }
     
-    private static function nimbuspost_curl($url, $data, $curl_post, $type)
+    private static function nimbuspost_curl($url, $data = '', $curl_post, $type)
     {
+        // self::print_r($url);
+
         $ch = curl_init();
 
         curl_setopt($ch, CURLOPT_URL, $url);
+
         curl_setopt($ch, CURLOPT_HEADER, false);
         curl_setopt($ch, CURLOPT_POST, $curl_post);
         curl_setopt($ch, CURLINFO_HEADER_OUT, true);
@@ -310,7 +370,7 @@ class NimbuspostController extends Controller
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $type);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, TRUE);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $data != '' ? json_encode($data) : '');
         curl_setopt($ch, CURLOPT_CAINFO, env('CAINFO_PATH'));
         curl_setopt($ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
 
@@ -324,5 +384,130 @@ class NimbuspostController extends Controller
         } else {
             return $response;
         }
+    }
+
+    private static function example_result_tracking()
+    {
+        $arrayVar = [
+            "status" => true,
+            "data" => [
+                "awb_number" => "JO0174099872",
+                "shipment_id" => "11033",
+                "created" => "2023-04-03",
+                "rto_awb" => "",
+                "courier_name" => "J&T - Standard - EZ",
+                "status" => "delivered",
+                "rto_status" => "",
+                "label" =>
+                    "https://nimubs-assets.s3.amazonaws.com/nimbus-id/20230404142514-69.pdf",
+                "tracking_url" =>
+                    "https://id.nimbuspost.com/shipping/tracking/JO0174099872",
+                "freight_charges" => "14000",
+                "consignee details" => [
+                    "name" => "Yoshe Salon",
+                    "address" =>
+                        "Desa Sugihwaras RT 14 / RW 04, Kec. Saradan, Kab. Madiun 63155, Saradan, Kab. Madiun, Jawa Timur",
+                    "address_2" => "",
+                    "city" => "Madiun",
+                    "state" => "Jawa Timur",
+                    "pincode" => "63155",
+                    "phone" => "63155",
+                ],
+                "history" => [
+                    [
+                        "status_code" => "DL",
+                        "location" => "",
+                        "event_time" => "1680585240",
+                        "message" => "Paket telah diterima",
+                    ],
+                    [
+                        "status_code" => "OFD",
+                        "location" => "",
+                        "event_time" => "1680579240",
+                        "message" => "Paket akan dikirim ke alamat penerima",
+                    ],
+                    [
+                        "status_code" => "OFD",
+                        "location" => "",
+                        "event_time" => "1680575580",
+                        "message" => "Paket telah sampai di MEJAYAN",
+                    ],
+                    [
+                        "status_code" => "OFD",
+                        "location" => "",
+                        "event_time" => "1680564420",
+                        "message" => "Paket akan dikirimkan ke MEJAYAN",
+                    ],
+                    [
+                        "status_code" => "OFD",
+                        "location" => "",
+                        "event_time" => "1680564360",
+                        "message" => "Paket telah sampai di MDN_GATEWAY",
+                    ],
+                    [
+                        "status_code" => "OFD",
+                        "location" => "",
+                        "event_time" => "1680563760",
+                        "message" => "Paket telah sampai di MDN_GATEWAY",
+                    ],
+                    [
+                        "status_code" => "OFD",
+                        "location" => "",
+                        "event_time" => "1680547620",
+                        "message" => "Paket akan dikirimkan ke MDN_GATEWAY",
+                    ],
+                    [
+                        "status_code" => "OFD",
+                        "location" => "",
+                        "event_time" => "1680547140",
+                        "message" => "Paket telah sampai di GSK2_GATEWAY",
+                    ],
+                    [
+                        "status_code" => "OFD",
+                        "location" => "",
+                        "event_time" => "1680546840",
+                        "message" => "Paket telah sampai di GSK2_GATEWAY",
+                    ],
+                    [
+                        "status_code" => "OFD",
+                        "location" => "",
+                        "event_time" => "1680546540",
+                        "message" => "Paket telah sampai di GSK2_GATEWAY",
+                    ],
+                    [
+                        "status_code" => "OFD",
+                        "location" => "",
+                        "event_time" => "1680535380",
+                        "message" => "Paket akan dikirimkan ke GSK2_GATEWAY",
+                    ],
+                    [
+                        "status_code" => "OFD",
+                        "location" => "",
+                        "event_time" => "1680534600",
+                        "message" => "Paket telah sampai di LMG_GATEWAY",
+                    ],
+                    [
+                        "status_code" => "OFD",
+                        "location" => "",
+                        "event_time" => "1680519480",
+                        "message" => "Paket akan dikirimkan ke LMG_GATEWAY",
+                    ],
+                    [
+                        "status_code" => "N/A",
+                        "location" => "",
+                        "event_time" => "1680515760",
+                        "message" => "Paket telah diterima oleh LAMONGAN_1",
+                    ],
+                    [
+                        "status_code" => "PP",
+                        "location" => "",
+                        "event_time" => "1680507660",
+                        "message" => "Manifes",
+                    ],
+                ],
+            ],
+        ];
+        
+        return $arrayVar;
     }
 }

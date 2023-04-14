@@ -13,10 +13,11 @@
 |
 */
 
-$router->get('/', function () use ($router) {
-    return $router->app->version();
-});
+// $router->get('/', function () use ($router) {
+//     return $router->app->version();
+// });
 
 $router->post('/courier/check', 'NimbuspostController@check_courier');
+$router->post('/shipment/tracking', 'NimbuspostController@tracking_history');
 $router->post('/shipment/new_shipment', 'NimbuspostController@create_new_shipment');
 $router->post('/shipment/request_pickup', 'NimbuspostController@create_request_pickup');
