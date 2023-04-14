@@ -21,11 +21,6 @@ class NimbuspostController extends Controller
         return json_decode($data, TRUE);
     }
 
-    public function create_request_pickup()
-    {
-        
-    }
-
     public function check_courier(Request $request)
     {
         // 
@@ -134,6 +129,11 @@ class NimbuspostController extends Controller
 
         // 
         return response()->json($data_array);
+    }
+
+    public function tracking_history(Request $request)
+    {
+        
     }
 
     public function create_new_shipment(Request $request)
@@ -254,6 +254,45 @@ class NimbuspostController extends Controller
 
         // 
         return response()->json($data_array);
+    }
+
+    public function create_request_pickup(Request $request)
+    {
+        // 
+        $request_input = $request->only('invoice_number');
+
+        // 
+        $res = DB::table('orders')->where('invoice_number', '=', $request_input['invoice_number'])->get();
+
+        // 
+        $post_array = [
+            'shipment_ids' => [(int)$res[0]->tracking_id]
+        ];
+        
+        // 
+        $res2 = self::nimbuspost_curl('https://id.nimbuspost.com/api/shipments/pickups', $post_array, true, 'post');
+        
+        // 
+        $decode_format = self::decode_format($res2);
+        
+        // self::print_r($decode_format);
+        
+        // 
+        if ($decode_format['status'] == true) {
+            $data_array = [
+                'status' => 210,
+                'message' => $decode_format['message']
+            ];
+        }
+        else {
+            $data_array = [
+                'status' => 509,
+                'message' => $decode_format['message']
+            ];
+        }
+
+        // 
+        return response()->json($data_array); 
     }
     
     private static function nimbuspost_curl($url, $data, $curl_post, $type)
