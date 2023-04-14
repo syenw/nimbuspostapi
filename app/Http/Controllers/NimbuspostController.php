@@ -154,11 +154,7 @@ class NimbuspostController extends Controller
                         foreach ($decode_format['data']['history'] as $value) {
                             $data_array[] = [
                                 'date' => date('d-M-Y H:i:s', $value['event_time']),
-                                'description' => [
-                                    'status_code' => $value['status_code'],
-                                    'message' => $value['message'],
-                                    'location' => $value['location']
-                                ]
+                                'description' => $value['message'],
                             ];
                         }
                     }
